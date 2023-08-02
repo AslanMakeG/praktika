@@ -59,7 +59,7 @@ async def get_vote_results(file: UploadFile = File(...)):
 
     return JSONResponse(votes)
 
-#Получить все темы
+#Получить все темы со всеми голосованиями
 @app.get('/api/get_themes')
 async def get_all_themes():
     try:
@@ -88,6 +88,37 @@ async def get_all_themes():
             return JSONResponse(themes_list)
     finally:
         connection.close()
+
+
+@app.get('/api/get_vote/{vote_id}')
+async def get_vote(vote_id: str):
+    try:
+        connection = get_connection()
+
+        vote_response = {}
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT votes.id, votes.name, votes.description, votes.agree_votes, votes.disagree_votes, "
+                           "votes.abstained_votes, status.name, votes.decision, themes.id, themes.name "
+                           "FROM votes "
+                           "JOIN status ON votes.status = status.id "
+                           "JOIN themes ON votes.theme = themes.id "
+                           f"WHERE votes.id = '{vote_id}'")
+
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=400, detail=f"Голосования с таким id не существует")
+
+            vote = cursor.fetchone()
+            vote_response = vote_row_to_json(vote)
+            vote_response['theme_id'] = vote[8]
+            vote_response['theme_name'] = vote[9]
+
+        return JSONResponse(vote_response)
+
+    except psycopg2.Error as ex:
+        raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
+    finally:
+        connection.close()
+
 
 #Создать тему
 @app.post('/api/create_theme')
@@ -269,4 +300,5 @@ async def delete_vote(vote_id: str):
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="25.57.86.102", port=5000)
+    #host="25.57.86.102"
+    uvicorn.run("main:app", host="127.0.0.1", port=5000)
