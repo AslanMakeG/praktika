@@ -8,6 +8,7 @@ from database import get_connection
 from models import Theme, Vote
 import os
 import hashlib
+from datetime import datetime
 
 #Загрузка модели для распознавания карточек
 model = YOLO('card_detect.pt')
@@ -21,8 +22,8 @@ def vote_row_to_json(row):
      'status': row[6].lower(), 'decision': row[7]}
 
 
-def get_hash(id):
-    b = bytes(str(id), encoding='utf-8')
+def get_hash_for_id():
+    b = bytes(str(datetime.now()), encoding='utf-8')
     hash_object = hashlib.md5(b)
     return hash_object.hexdigest()
 
@@ -128,8 +129,7 @@ async def create_theme(theme: Theme):
 
         theme_response = {"name": theme.name} #Подготовка ответа с созданной темой
         with connection.cursor() as cursor:  # Создание курсора
-            cursor.execute(" SELECT count(*) FROM themes")
-            theme_response['id'] = get_hash(cursor.fetchone()[0] + 1) #Получение хэша для следующего id
+            theme_response['id'] = get_hash_for_id() #Получение хэша для следующего id
             #Вставка в БД
             cursor.execute(f"INSERT INTO themes (id, name) VALUES ('{theme_response['id']}','{theme.name}')")
             connection.commit()
@@ -150,8 +150,7 @@ async def create_vote(vote: Vote):
 
         vote_response = {} #Подготовка ответа с созданным голосованием
         with connection.cursor() as cursor: #Создание курсора
-            cursor.execute(" SELECT count(*) FROM votes")
-            vote_id = get_hash(cursor.fetchone()[0] + 1) #Получение хэша для будущего id голосования
+            vote_id = get_hash_for_id() #Получение хэша для будущего id голосования
             cursor.execute("INSERT INTO votes (id, name, description, agree_votes, "
                            "disagree_votes, abstained_votes, status, theme)"
                            f"VALUES('{vote_id}', '{vote.name}', '{vote.description}', 0, 0,"
