@@ -2,6 +2,7 @@ import psycopg2
 from ultralytics import YOLO
 from fastapi import FastAPI, UploadFile, File, HTTPException, Body
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import uvicorn
 from database import get_connection
@@ -15,6 +16,15 @@ model = YOLO('card_detect.pt')
 
 app = FastAPI()
 
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def vote_row_to_json(row):
     return {'id': row[0], 'name': row[1], 'description': row[2], 'agree_votes': row[3],
@@ -91,6 +101,7 @@ async def get_all_themes():
         connection.close()
 
 
+#Получить голосование по id
 @app.get('/api/get_vote/{vote_id}')
 async def get_vote(vote_id: str):
     try:
@@ -300,4 +311,4 @@ async def delete_vote(vote_id: str):
 
 if __name__ == "__main__":
     #host="25.57.86.102"
-    uvicorn.run("main:app", host="127.0.0.1", port=5000)
+    uvicorn.run("main:app", host="25.57.86.102", port=5000)
