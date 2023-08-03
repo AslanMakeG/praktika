@@ -77,7 +77,7 @@ async def get_all_themes():
         connection = get_connection()
 
         with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM themes") #Получаем все темы
+            cursor.execute("SELECT * FROM themes ORDER BY date_created") #Получаем все темы
             themes_list = []
             themes = cursor.fetchall()
 
@@ -87,7 +87,8 @@ async def get_all_themes():
                 cursor.execute(f"SELECT votes.id, votes.name, votes.description, votes.agree_votes, "
                                f"votes.disagree_votes, votes.abstained_votes, status.name, votes.decision "
                                f"FROM votes JOIN status ON votes.status = status.id "
-                               f"WHERE votes.theme = '{theme_dict['id']}'") #Для каждой темы получаем голосования
+                               f"WHERE votes.theme = '{theme_dict['id']}'"
+                               f"ORDER BY date_created") #Для каждой темы получаем голосования
                 votes = cursor.fetchall()
 
                 for vote in votes:
@@ -98,7 +99,8 @@ async def get_all_themes():
 
             return JSONResponse(themes_list)
     finally:
-        connection.close()
+        if connection:
+            connection.close()
 
 
 #Получить голосование по id
@@ -129,7 +131,8 @@ async def get_vote(vote_id: str):
     except psycopg2.Error as ex:
         raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
     finally:
-        connection.close()
+        if connection:
+            connection.close()
 
 
 #Создать тему
@@ -142,7 +145,8 @@ async def create_theme(theme: Theme):
         with connection.cursor() as cursor:  # Создание курсора
             theme_response['id'] = get_hash_for_id() #Получение хэша для следующего id
             #Вставка в БД
-            cursor.execute(f"INSERT INTO themes (id, name) VALUES ('{theme_response['id']}','{theme.name}')")
+            cursor.execute(f"INSERT INTO themes (id, name, date_created) "
+                           f"VALUES ('{theme_response['id']}','{theme.name}', '{str(datetime.now())}')")
             connection.commit()
 
         return JSONResponse(theme_response)
@@ -150,7 +154,8 @@ async def create_theme(theme: Theme):
     except psycopg2.Error as ex:
         raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
     finally:
-        connection.close()
+        if connection:
+            connection.close()
 
 
 #Создать голосование в теме (нужно передать только name и theme)
@@ -163,9 +168,9 @@ async def create_vote(vote: Vote):
         with connection.cursor() as cursor: #Создание курсора
             vote_id = get_hash_for_id() #Получение хэша для будущего id голосования
             cursor.execute("INSERT INTO votes (id, name, description, agree_votes, "
-                           "disagree_votes, abstained_votes, status, theme)"
+                           "disagree_votes, abstained_votes, status, theme, date_created)"
                            f"VALUES('{vote_id}', '{vote.name}', '{vote.description}', 0, 0,"
-                           f"0, 1, '{vote.theme}')") #Вставка записи голосования в БД
+                           f"0, 1, '{vote.theme}', '{str(datetime.now())}')") #Вставка записи голосования в БД
 
             cursor.execute("SELECT votes.id, votes.name, votes.description, votes.agree_votes, "
                             "votes.disagree_votes, votes.abstained_votes, status.name, votes.decision, votes.theme "
@@ -183,7 +188,8 @@ async def create_vote(vote: Vote):
     except psycopg2.Error as ex:
         raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
     finally:
-        connection.close()
+        if connection:
+            connection.close()
 
 
 #Начать голосование (при нажатии на кнопку)
@@ -220,7 +226,8 @@ async def start_vote(vote: dict = Body(...)):
     except psycopg2.Error as ex:
         raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
     finally:
-        connection.close()
+        if connection:
+            connection.close()
 
 
 #Закончить голосование (при нажатии на кнопку)
@@ -275,7 +282,8 @@ async def start_vote(vote: dict = Body(...)):
     except psycopg2.Error as ex:
         raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
     finally:
-        connection.close()
+        if connection:
+            connection.close()
 
 
 @app.delete('/api/delete_theme/{theme_id}')
@@ -291,7 +299,8 @@ async def delete_theme(theme_id: str):
     except psycopg2.Error as ex:
         raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
     finally:
-        connection.close()
+        if connection:
+            connection.close()
 
 
 @app.delete('/api/delete_vote/{vote_id}')
@@ -306,9 +315,10 @@ async def delete_vote(vote_id: str):
     except psycopg2.Error as ex:
         raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
     finally:
-        connection.close()
+        if connection:
+            connection.close()
 
 
 if __name__ == "__main__":
-    #host="25.57.86.102"
-    uvicorn.run("main:app", host="25.57.86.102", port=5000)
+    #host="25.57.86.102" host="127.0.0.1"
+    uvicorn.run("main:app", host="127.0.0.1", port=5000)
