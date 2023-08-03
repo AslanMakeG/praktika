@@ -47,8 +47,6 @@ async def get_vote_results(file: UploadFile = File(...)):
     with open('image.jpg', 'wb') as f:
         shutil.copyfileobj(file.file, f)
 
-    print('Файл скопирован в image.jpg')
-
     votes = {'agreeable': 0, 'disagree': 0, 'abstained': 0}
 
     results = model.predict('image.jpg', conf=0.5)
@@ -214,6 +212,9 @@ async def start_vote(vote: dict = Body(...)):
                             "FROM votes JOIN status ON votes.status = status.id "
                             f"WHERE votes.id = '{vote['id']}'") #Выбор только что измененной записи
 
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=400, detail=f"Голосования с таким id не существует")
+
             inserted_vote = cursor.fetchone()
 
             vote_response = vote_row_to_json(inserted_vote) #В json
@@ -242,24 +243,28 @@ async def start_vote(vote: dict = Body(...)):
             if key not in vote.keys():
                 raise HTTPException(status_code=400, detail=f"Не указан {key}")
 
-        amount_of_votes = vote['agreeable'] + vote['disagree'] + vote['abstained'] #Общее кол-во голосов
-        agree_percent = vote['agreeable'] / amount_of_votes #Процент голосов за
-        disagree_percent = vote['disagree'] / amount_of_votes #Процент голосов против
-
         vote_response = {}
         with connection.cursor() as cursor:
 
-            cursor.execute(f"SELECT status FROM votes WHERE id = '{vote['id']}'")
-            if cursor.fetchone()[0] in [1, 3, 4]: #1 - не начато, 3 - закончено, 4 - требует переголосования
-                raise HTTPException(status_code=400, detail=f"Голосование еще не начато или уже закончено")
+            amount_of_votes = vote['agreeable'] + vote['disagree'] + vote['abstained']  # Общее кол-во голосов
 
-            #Установка решения окончания голосования
-            if agree_percent > 0.5:
-                cursor.execute(f"UPDATE votes SET decision = 'За', status = 3 WHERE id = '{vote['id']}'")
-            elif disagree_percent > 0.5:
-                cursor.execute(f"UPDATE votes SET decision = 'Против', status = 3 WHERE id = '{vote['id']}'")
-            else:
+            if amount_of_votes == 0:
                 cursor.execute(f"UPDATE votes SET decision = null, status = 4 WHERE id = '{vote['id']}'")
+            else:
+                agree_percent = vote['agreeable'] / amount_of_votes  # Процент голосов за
+                disagree_percent = vote['disagree'] / amount_of_votes  # Процент голосов против
+
+                cursor.execute(f"SELECT status FROM votes WHERE id = '{vote['id']}'")
+                if cursor.fetchone()[0] in [1, 3, 4]: #1 - не начато, 3 - закончено, 4 - требует переголосования
+                    raise HTTPException(status_code=400, detail=f"Голосование еще не начато или уже закончено")
+
+                #Установка решения окончания голосования
+                if agree_percent > 0.5:
+                    cursor.execute(f"UPDATE votes SET decision = 'За', status = 3 WHERE id = '{vote['id']}'")
+                elif disagree_percent > 0.5:
+                    cursor.execute(f"UPDATE votes SET decision = 'Против', status = 3 WHERE id = '{vote['id']}'")
+                else:
+                    cursor.execute(f"UPDATE votes SET decision = null, status = 4 WHERE id = '{vote['id']}'")
 
             #Установка количества голосов
             cursor.execute(f"UPDATE votes SET agree_votes = {vote['agreeable']}, disagree_votes = {vote['disagree']}, "
@@ -270,6 +275,10 @@ async def start_vote(vote: dict = Body(...)):
                             "votes.disagree_votes, votes.abstained_votes, status.name, votes.decision, votes.theme "
                             "FROM votes JOIN status ON votes.status = status.id "
                             f"WHERE votes.id = '{vote['id']}'")
+
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=400, detail=f"Голосования с таким id не существует")
+
             inserted_vote = cursor.fetchone()
 
             vote_response = vote_row_to_json(inserted_vote) #В json
@@ -321,4 +330,4 @@ async def delete_vote(vote_id: str):
 
 if __name__ == "__main__":
     #host="25.57.86.102" host="127.0.0.1"
-    uvicorn.run("main:app", host="127.0.0.1", port=5000)
+    uvicorn.run("main:app", host="25.57.86.102", port=5000)
