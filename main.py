@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import uvicorn
-from database import get_connection
+from database import get_connection, create_db
 from models import Theme, Vote
 import os
 import hashlib
@@ -127,7 +127,7 @@ async def get_vote(vote_id: str):
         return JSONResponse(vote_response)
 
     except psycopg2.Error as ex:
-        raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {ex}")
     finally:
         if connection:
             connection.close()
@@ -150,7 +150,7 @@ async def create_theme(theme: Theme):
         return JSONResponse(theme_response)
 
     except psycopg2.Error as ex:
-        raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {ex}")
     finally:
         if connection:
             connection.close()
@@ -184,7 +184,7 @@ async def create_vote(vote: Vote):
         return JSONResponse(vote_response)
 
     except psycopg2.Error as ex:
-        raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {ex}")
     finally:
         if connection:
             connection.close()
@@ -225,7 +225,7 @@ async def start_vote(vote: dict = Body(...)):
         return JSONResponse(vote_response)
 
     except psycopg2.Error as ex:
-        raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {ex}")
     finally:
         if connection:
             connection.close()
@@ -289,7 +289,7 @@ async def start_vote(vote: dict = Body(...)):
         return JSONResponse(vote_response)
 
     except psycopg2.Error as ex:
-        raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {ex}")
     finally:
         if connection:
             connection.close()
@@ -306,7 +306,7 @@ async def delete_theme(theme_id: str):
             connection.commit()
 
     except psycopg2.Error as ex:
-        raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {ex}")
     finally:
         if connection:
             connection.close()
@@ -322,7 +322,7 @@ async def delete_vote(vote_id: str):
             connection.commit()
 
     except psycopg2.Error as ex:
-        raise HTTPException(status_code=500, detail=f"Ошибка {ex}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {ex}")
     finally:
         if connection:
             connection.close()
@@ -330,4 +330,5 @@ async def delete_vote(vote_id: str):
 
 if __name__ == "__main__":
     #host="25.57.86.102" host="127.0.0.1"
-    uvicorn.run("main:app", host="25.57.86.102", port=5000)
+    create_db() #Создаст бд и таблицы, если ее нет
+    uvicorn.run("main:app", host="127.0.0.1", port=5000)
