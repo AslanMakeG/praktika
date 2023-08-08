@@ -26,12 +26,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 def vote_row_to_json(row):
     return {'id': row[0], 'name': row[1], 'description': row[2], 'agree_votes': row[3],
      'disagree_votes': row[4], 'abstained_votes': row[5],
      'status': row[6].lower(), 'decision': row[7]}
 
 
+#Получения хэша для id
 def get_hash_for_id():
     b = bytes(str(datetime.now()), encoding='utf-8')
     hash_object = hashlib.md5(b)
