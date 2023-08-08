@@ -330,5 +330,6 @@ async def delete_vote(vote_id: str):
 
 if __name__ == "__main__":
     #host="25.57.86.102" host="127.0.0.1"
+
     create_db() #Создаст бд и таблицы, если ее нет
     uvicorn.run("main:app", host="127.0.0.1", port=5000)
